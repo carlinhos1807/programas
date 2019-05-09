@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #define RAM 4
-#define NUM_NUMS 31
+#define NUM_NUMS 32
 #define NUM_CAMINHOS 2
 
 // Cria um arquivo temporario chamado nome com tam numeros aleatorios.
@@ -14,7 +14,7 @@
 void cria_arq_rand(char *nome, int tam){
   FILE *arq;
   int num,j=0;
-  int vet[31] = {5,28,10,40,35,7,12,2,21,11,29,27,9,38,8,49,3,15,13,30,17,46,18,36,1,4,34,16,19,22,20};
+  int vet[32] = {5,28,10,40,35,7,12,2,21,11,29,27,9,38,8,49,3,15,13,30,17,46,18,36,1,4,34,16,19,22,20,23};
 
 
   arq = fopen(nome,"wb");
@@ -43,7 +43,7 @@ void le_arq(char *nome){
   while( 1 == fread(&num,sizeof(num),1,arq)){
     printf("%d(%d) ",num,i++);
     if (i%RAM==0)
-      printf("    ");
+      printf("   ");
   }
   printf("\n");
   if (!feof(arq))
@@ -62,7 +62,7 @@ void abre_arqs_temp(int inicio, int fim, char *nome_arq, FILE **arqstemp, char *
   for (int i=inicio;i<fim;i++){
     // cria nome do arq temporario e abre
     sprintf(nome_arq_temp,"%s.%d",nome_arq,i);
-    arqstemp[i-inicio]=fopen(nome_arq_temp, como);
+    arqstemp[i]=fopen(nome_arq_temp, como);
   }
 }
 
@@ -104,7 +104,7 @@ int verifica_menor(bool *avanca,int*fitas, int tam,bool *ativa, int*leitura_fita
 
 
   if(flag){
-  printf("%d(%d)(%d)(%d) e %d(%d)(%d)(%d) = %d(%d)\n",fitas[0],leitura_fitas[0],ativa[0],compara[0],fitas[1],leitura_fitas[1],ativa[1],compara[1],menor,indice_menor);
+  //printf("%d(%d)(%d)(%d) e %d(%d)(%d)(%d) = %d(%d)\n",fitas[0],leitura_fitas[0],ativa[0],compara[0],fitas[1],leitura_fitas[1],ativa[1],compara[1],menor,indice_menor);
 }
 
   return menor;
@@ -143,6 +143,17 @@ bool esta_no_vetor(int *vet,int menor,int tam)
   }
   return false;
 }
+void reseta_valores(bool *fita_ativa, bool *avanca,int *leitura_fitas,bool *compara, bool *todas_terminaram,int *cont,int tam)
+{
+  for(int i = 0; i < NUM_CAMINHOS; i++){
+    fita_ativa[i] = true;
+    avanca[i] = true;
+    leitura_fitas[i] = 0;
+    compara[i] = true;
+  }
+  *todas_terminaram = false;
+}
+
 void merge(int *vet_aux, FILE **arqstemp)
 {
   int i,j, menor, cont = 0, nao_terminou;
@@ -152,47 +163,70 @@ void merge(int *vet_aux, FILE **arqstemp)
   int fitas[NUM_CAMINHOS];
   int leitura_fitas[NUM_CAMINHOS];
   bool todas_terminaram = false;
-  fseek(arqstemp[0],8*sizeof(int),SEEK_SET);
-  fseek(arqstemp[1],8*sizeof(int),SEEK_SET);
-  for(i = 0; i < NUM_CAMINHOS; i++){
-    fita_ativa[i] = true;
-    avanca[i] = true;
-    leitura_fitas[i] = 0;
-    compara[i] = true;
-  }
-  while(!todas_terminaram){
-    for(j = 0; j < NUM_CAMINHOS; j++){
-      if(avanca[j] && fita_ativa[j]){
-        fread(&fitas[j],sizeof(int),1,arqstemp[j]);
-        leitura_fitas[j]++;
+  reseta_valores(fita_ativa,avanca,leitura_fitas,compara,&todas_terminaram,&cont,NUM_CAMINHOS);
+
+  for(i = 0; i < 4;i++){
+    reseta_valores(fita_ativa,avanca,leitura_fitas,compara,&todas_terminaram,&cont,NUM_CAMINHOS);
+    while(!todas_terminaram){
+      for(j = 0; j < NUM_CAMINHOS; j++){
+        if(avanca[j] && fita_ativa[j]){
+          fread(&fitas[j],sizeof(int),1,arqstemp[j]);
+          leitura_fitas[j]++;
+       }
+
      }
+     verifica_ativos(fita_ativa,leitura_fitas,NUM_CAMINHOS,avanca,fitas,compara);
+     menor = verifica_menor(avanca,fitas,NUM_CAMINHOS,fita_ativa,leitura_fitas,compara,1);
+     todas_terminaram = verifica_fim(fita_ativa,NUM_CAMINHOS,compara);
+
+        vet_aux[cont] = menor;
+        cont++;
 
    }
-   verifica_ativos(fita_ativa,leitura_fitas,NUM_CAMINHOS,avanca,fitas,compara);
-   menor = verifica_menor(avanca,fitas,NUM_CAMINHOS,fita_ativa,leitura_fitas,compara,1);
-   todas_terminaram = verifica_fim(fita_ativa,NUM_CAMINHOS,compara);
-
-      vet_aux[cont] = menor;
-      cont++;
-
  }
 }
+
 void intercalacao_balanceada_2_caminhos(char *nome_arq)
 {
-    FILE **arqstemp = malloc(sizeof(FILE *) * NUM_CAMINHOS);
+    FILE **arqstemp = malloc(sizeof(FILE *) * 2*NUM_CAMINHOS);
     abre_arqs_temp(0,NUM_CAMINHOS,nome_arq,arqstemp,"rb");
-    int vet[8];
-    int valor, lido, vet_aux[NUM_CAMINHOS*RAM];
+    int vet[8], z = 0;
+    int valor, lido, vet_aux[NUM_NUMS];
+    int vet1[16], contvet1 = 0;
+    int vet2[16], contvet2 = 0;
     merge(vet_aux,arqstemp);
-    for(int i = 0; i < NUM_CAMINHOS*RAM;i++){
-      printf(" %d",vet_aux[i]);
+    abre_arqs_temp(2,4,nome_arq,arqstemp,"wb");
+    for(int i = 0; i < NUM_NUMS;i++){
+      if(z == 0){
+        vet1[contvet1] = vet_aux[i];
+        contvet1++;
+
+      }else{
+        vet2[contvet2] = vet_aux[i];
+        contvet2++;
+
+      }
+      if((i+1) % 8 == 0){
+      z++;
+      z = z % NUM_CAMINHOS;
     }
 
+    }
 
-
-
-
-
+    for(int i = 0; i < 16;i++){
+      fwrite(&vet1[i],sizeof(int),1,arqstemp[2]);
+      if((i+1) % 8 == 0){
+        printf("----");
+      }
+    }
+    printf("\n");
+    for(int i = 0; i < 16;i++){
+      fwrite(&vet2[i],sizeof(int),1,arqstemp[3]);
+      if((i+1) % 8 == 0){
+        printf("----");
+      }
+    }
+    fecha_arqs(2*NUM_CAMINHOS, arqstemp);
 
 }
 void distribui(int num_caminhos, char *nome_arq){
@@ -224,7 +258,7 @@ int main(){
   cria_arq_rand(nome_arq, NUM_NUMS);
   distribui(NUM_CAMINHOS, nome_arq);
 
-  for (int i=0; i<NUM_CAMINHOS; i++){
+  for (int i=0; i<2*NUM_CAMINHOS; i++){
     sprintf(nome_arq_temp, "%s.%d", nome_arq, i);
     printf("------- %s:\n", nome_arq_temp);
     le_arq(nome_arq_temp);
