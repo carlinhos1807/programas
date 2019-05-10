@@ -8,7 +8,7 @@
 
 #define RAM 4
 #define NUM_NUMS 31
-#define NUM_CAMINHOS 2
+#define NUM_CAMINHOS 3
 struct fitas{
   FILE *arq;
   bool pode_avancar;
@@ -138,7 +138,7 @@ void zera_fitas(Fitas *fitas, int tam)
     fitas[i].ativa = true;
   }
 }
-void intercalacao_balanceada(Fitas *fitas, char *nome_arq, int tamanho_conjunto, int indice)
+void intercalacao_balanceada(Fitas *fitas, char *nome_arq, int tamanho_conjunto, int indice, int *vet, int *cont)
 {
   int i = 0, j, buffer, menor, contador_escrita = 0;
   int val_fitas[NUM_CAMINHOS];
@@ -146,9 +146,8 @@ void intercalacao_balanceada(Fitas *fitas, char *nome_arq, int tamanho_conjunto,
   zera_valores(leitura_fitas,NUM_CAMINHOS+1);
   bool fim = false, calcula = true;
   abre_arqs_temp(0,NUM_CAMINHOS,nome_arq,fitas,"rb+");
-  abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"rb+");
   zera_fitas(fitas,NUM_CAMINHOS+1);
-  for(i = 0; i < NUM_CAMINHOS+1;i++){
+  for(i = 0; i < NUM_CAMINHOS;i++){
 
       fseek(fitas[i].arq,indice*sizeof(int),SEEK_SET);
       fread(&buffer,sizeof(int),1,fitas[i].arq);
@@ -198,11 +197,12 @@ void intercalacao_balanceada(Fitas *fitas, char *nome_arq, int tamanho_conjunto,
     menor = verifica_menor(val_fitas,fitas,NUM_CAMINHOS);
     fim = verifica_fim(fitas,NUM_CAMINHOS);
     if(!fim){
-      printf(" %d",menor);
+      vet[*cont] = menor;
+      (*cont)++;
     }
 
   }
-  fecha_arqs(NUM_CAMINHOS+1,fitas);
+  fecha_arqs(NUM_CAMINHOS,fitas);
 
 }
 void distribui(int num_caminhos, char *nome_arq, Fitas *fitas){
@@ -232,9 +232,76 @@ void inicializa_fitas(Fitas *fitas, int tam)
     fitas[i].ativa = true;
   }
 }
+void redistribui(Fitas *fitas,int conjunto,char *nome_arq)
+{
+
+  int buffer[conjunto], i=0, lidos;
+  abre_arqs_temp(0,NUM_CAMINHOS,nome_arq,fitas,"wb");
+  abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"rb");
+  while( conjunto == (lidos = fread(&buffer, sizeof(int), conjunto, fitas[NUM_CAMINHOS].arq))){ // le o arquivo de entrada para a RAM
+    fwrite(buffer, sizeof(int)*conjunto, 1, fitas[i].arq); // escreve para o arquivo temporario atual
+    i++;
+    i %= NUM_CAMINHOS; // incrementa o arquivo temporario
+  }
+  fwrite(buffer, sizeof(int)*lidos, 1, fitas[i].arq); // escreve para o arquivo temporario atual
+
+
+}
 void intercalacao_multi_ways(Fitas *fitas, char *nome_arq,int tamanho_conjunto)
 {
-    int vet[NUM_NUMS], cont = 0;
+    int vet[NUM_NUMS], cont = 0, i, j;
+    abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"wb");
+
+    for(j = 1; j <=3;j++){
+      abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"wb");
+      cont = 0;
+      for(i = 0; i < 4/j;i++){
+        intercalacao_balanceada(fitas,nome_arq,pow(2,(j+1)),pow(2,(j+1))*i,vet,&cont);
+      }
+      for(i = 0; i < NUM_NUMS;i++){
+        fwrite(&vet[i],sizeof(int),1,fitas[NUM_CAMINHOS].arq);
+      }
+      fecha_arqs(NUM_CAMINHOS+1,fitas);
+      if(j<3){
+      redistribui(fitas,pow(2,(j+2)),nome_arq);
+     }
+      fecha_arqs(NUM_CAMINHOS+1,fitas);
+    }
+
+    /*
+    for(i = 0; i < 4;i++){
+      intercalacao_balanceada(fitas,nome_arq,4,4*i,vet,&cont);
+    }
+    for(i = 0; i < NUM_NUMS;i++){
+      fwrite(&vet[i],sizeof(int),1,fitas[NUM_CAMINHOS].arq);
+    }
+    fecha_arqs(NUM_CAMINHOS+1,fitas);
+    redistribui(fitas,8,nome_arq);
+    fecha_arqs(NUM_CAMINHOS+1,fitas);
+    abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"wb");
+    cont = 0;
+    for(i = 0; i < 2;i++){
+      intercalacao_balanceada(fitas,nome_arq,8,8*i,vet,&cont);
+    }
+    for(i = 0; i < NUM_NUMS;i++){
+      fwrite(&vet[i],sizeof(int),1,fitas[NUM_CAMINHOS].arq);
+    }
+    fecha_arqs(NUM_CAMINHOS+1,fitas);
+    redistribui(fitas,16,nome_arq);
+    fecha_arqs(NUM_CAMINHOS+1,fitas);
+    abre_arqs_temp(NUM_CAMINHOS,NUM_CAMINHOS+1,nome_arq,fitas,"wb");
+    cont = 0;
+    for(i = 0; i < 1;i++){
+      intercalacao_balanceada(fitas,nome_arq,16,16*i,vet,&cont);
+    }
+    for(i = 0; i < NUM_NUMS;i++){
+      fwrite(&vet[i],sizeof(int),1,fitas[NUM_CAMINHOS].arq);
+    }
+    fecha_arqs(NUM_CAMINHOS+1,fitas);
+    */
+
+
+
 }
 int main(){
   //srand(time(NULL));
@@ -244,7 +311,7 @@ int main(){
   Fitas *fitas = (Fitas*)malloc(sizeof(Fitas) * (NUM_CAMINHOS+1));
   inicializa_fitas(fitas,NUM_CAMINHOS+1);
   distribui(NUM_CAMINHOS, nome_arq,fitas);
-  intercalacao_multi_ways(fitas,nome_arq,RAM);
+  //intercalacao_multi_ways(fitas,nome_arq,RAM);
 
 
 
