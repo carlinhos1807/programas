@@ -6,9 +6,9 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define RAM 4
-#define NUM_NUMS 31
-#define NUM_CAMINHOS 6
+#define RAM 7
+#define NUM_NUMS 13
+#define NUM_CAMINHOS 3
 struct fitas{
   FILE *arq;
   bool pode_avancar;
@@ -20,7 +20,14 @@ typedef struct fitas Fitas;
 void cria_arq_rand(char *nome, int tam){
   FILE *arq;
   int num,j=0;
-  int vet[42] = {5,28,10,40,35,7,12,2,21,11,29,27,9,38,8,49,3,15,13,30,17,46,18,36,1,4,34,16,19,22,20,80,81,82,83,84,85,86,87,88,89,90};
+  int vet[31] = {5,28,10,40,35,7,12,2,21,11,29,27,9,38,8,49,3,15,13,30,17,46,18,36,1,4,34,16,19,22,20};
+  /*
+  int tam_vet = 40;
+  int vet[tam_vet];
+  for(int i =0; i < tam_vet;i++){
+    vet[i] = tam - i;
+  }
+  */
 
 
   arq = fopen(nome,"wb");
@@ -28,18 +35,13 @@ void cria_arq_rand(char *nome, int tam){
   for (int i = 0; i < tam; i++) {
     num = rand()%100;
     fwrite(&vet[i], sizeof(vet[i]), 1, arq);
-    printf("%d\t",vet[i],j++);
-    if (j%RAM==0)
-      printf("\n");
   }
-  printf("\n");
-  printf("\n");
 //  fflush(arq); // garante que tudo foi gravado antes de fechar
   fclose(arq);
 }
 
 // Le um aquivo com numeros inteiros e mostra-os na tela.
-void le_arq(char *nome){
+void le_arq(char *nome, bool antes){
   FILE *arq;
   int num;
   int i=0;
@@ -49,8 +51,8 @@ void le_arq(char *nome){
   while( 1 == fread(&num,sizeof(num),1,arq)){
     printf(" %d ",num,i++);
 
-    if (i%RAM==0)
-      printf("");
+    if (i%RAM==0 && antes == true)
+      printf("     ");
   }
   printf("\n");
   if (!feof(arq))
@@ -257,9 +259,13 @@ void intercalacao_multi_ways(Fitas *fitas, char *nome_arq,int tamanho_conjunto, 
 }
 int main(){
   //srand(time(NULL));
-  char nome_arq[]="teste.arq";
+  char nome_arq[10]="teste.arq";
+  nome_arq[9] = '\0';
   char *nome_arq_temp = malloc(sizeof(char)*strlen(nome_arq)+3); // suporta ate .99 arquivos
   cria_arq_rand(nome_arq, NUM_NUMS);
+  printf("-------- ANTES DE ORDENAR: arquivo original ---------\n\n");
+  le_arq(nome_arq,false);
+  printf("\n");
   Fitas *fitas = (Fitas*)malloc(sizeof(Fitas) * (NUM_CAMINHOS+1));
   inicializa_fitas(fitas,NUM_CAMINHOS+1);
   distribui(NUM_CAMINHOS, nome_arq,fitas);
@@ -267,22 +273,19 @@ int main(){
   float passadas_aux = log10(v1) / log10(NUM_CAMINHOS);
   passadas_aux = ceil(passadas_aux);
   int passadas = passadas_aux;
-  printf("-------- ANTES DE ORDENAR(depois de feita a distribuicao) ---------\n");
+  printf("-------- ANTES DE ORDENAR: depois de feita a distribuicao em blocos ordenados ---------\n\n");
   for (int i=0; i<NUM_CAMINHOS; i++){
     sprintf(nome_arq_temp, "%s.%d", nome_arq, i);
     printf("------- %s:\n", nome_arq_temp);
-    le_arq(nome_arq_temp);
+    le_arq(nome_arq_temp,true);
   }
   printf("\n");
   intercalacao_multi_ways(fitas,nome_arq,RAM,passadas);
-
-
-
-  //le_arq2();
-  printf("-------- DEPOIS DE ORDENAR ---------\n");
-    sprintf(nome_arq_temp, "%s.%d", nome_arq, 0);
-    printf("------- %s:\n", nome_arq_temp);
-    le_arq(nome_arq_temp);
-
+  printf("-------- DEPOIS DE ORDENAR(resultado colocado no teste.arq.0, apos varias intercalacoes) ---------\n\n");
+  sprintf(nome_arq_temp, "%s.%d", nome_arq, 0);
+  printf("------- %s:\n", nome_arq_temp);
+  le_arq(nome_arq_temp,false);
+  fecha_arqs(NUM_CAMINHOS+1, fitas);
+  return 0;
 
 }
