@@ -13,11 +13,10 @@ int main(void)
   int intervalo = tam / 2;
   while(intervalo > 0){
       for(i = intervalo; i < tam;i++){
-        chave = vet[i];
-        j = i - intervalo;
-        while(chave < vet[j] && (j >=0)){
-          aux = vet[j+intervalo];
-          vet[j+intervalo] = vet[j];
+        j = i;
+        while(vet[j] < vet[j-intervalo] && (j > 0)){
+          aux = vet[j-intervalo];
+          vet[j-intervalo] = vet[j];
           vet[j] = aux;
           j = j - intervalo;
         }

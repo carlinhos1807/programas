@@ -21,6 +21,20 @@ void insertion_sort1()
     printf(" %d",vet[i]);
   }
 }
+void insertion_sort_recursivo(int *vet, int tam)
+{
+    if(tam <= 1){
+        return;
+    }
+    insertion_sort_recursivo(vet,tam-1);
+    int j = tam-1;
+    while(vet[j] < vet[j-1] && j>0){
+        int aux = vet[j];
+        vet[j] = vet[j-1];
+        vet[j-1] = aux;
+        j--;
+    }
+}
 void insertion_sort2()
 {
   int vet[9] = {2,53,0,34,31,65,11,-1,120};
